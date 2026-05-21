@@ -1,42 +1,39 @@
-from flask import Flask, render_template, request
-from transformers import T5ForConditionalGeneration, T5Tokenizer
-from deep_translator import GoogleTranslator  # অনুবাদ করার জন্য লাইব্রেরি
+from flask import Flask, render_template, request, jsonify
+from huggingface_hub import InferenceClient
+from deep_translator import GoogleTranslator
 
 app = Flask(__name__)
 
-# AI model
-model_name = "vennify/t5-base-grammar-correction"
+# টোকেন ছাড়াই ক্লায়েন্ট তৈরি করা
+client = InferenceClient(model="grammarly/coedit-large")
 
-# মডেল এবং টোকেনাইজার লোড করা হচ্ছে
-tokenizer = T5Tokenizer.from_pretrained(model_name)
-model = T5ForConditionalGeneration.from_pretrained(model_name)
+def correct_grammar(text):
+    try:
+        # ইনপুট ফরম্যাট
+        result = client.text_generation(f"gec: {text}")
+        return result
+    except:
+        return text
 
-def correct_text(text):
-    input_text = "grammar: " + text
-    inputs = tokenizer.encode(input_text, return_tensors="pt", truncation=True)
-    outputs = model.generate(inputs, max_length=256, num_beams=5)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+def translate_to_bangla(text):
+    try:
+        return GoogleTranslator(source='auto', target='bn').translate(text)
+    except:
+        return "অনুবাদ সম্ভব হয়নি।"
 
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-@app.route("/", methods=["GET", "POST"])
-def home():
-    original = ""
-    result = ""
-    translation = ""  # নতুন ভ্যারিয়েবল
+@app.route('/correct', methods=['POST'])
+def correct():
+    data = request.get_json()
+    input_text = data.get('text', '')
+    
+    corrected = correct_grammar(input_text)
+    translated = translate_to_bangla(corrected)
+    
+    return jsonify({'corrected': corrected, 'translated': translated})
 
-    if request.method == "POST":
-        original = request.form["text"]
-        result = correct_text(original)  # আপনার এআই মডেল দিয়ে গ্রামার ঠিক করা হলো
-        
-        # ঠিক করা ইংরেজি বাক্যটিকে পাইথন দিয়ে বাংলায় অনুবাদ করা হচ্ছে
-        try:
-            translation = GoogleTranslator(source='en', target='bn').translate(result)
-        except Exception:
-            translation = "অনুবাদ করা যায়নি।"
-
-    # আপনার index.html ফাইলে translation-ও পাঠিয়ে দেওয়া হলো
-    return render_template("index.html", original=original, result=result, translation=translation)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=7860)
