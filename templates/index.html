@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Spell Checker</title>
+    <!-- Google Fonts থেকে ইন্টার ফন্ট যোগ করা হয়েছে -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 40px 30px;
+            width: 100%;
+            max-width: 550px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h2 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            color: #38bdf8; 
+            text-align: center;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 20px;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"]:focus {
+            border-color: #6366f1;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button[type="submit"] {
+            background: #4f46e5;
+            color: white;
+            flex: 2;
+        }
+
+        button[type="submit"]:hover {
+            background: #6366f1;
+        }
+
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+            flex: 1;
+            text-decoration: none;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .btn-reset:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 12px;
+            border-left: 4px solid #10b981;
+            text-align: left;
+            position: relative;
+        }
+
+        .result-box p {
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .label {
+            font-weight: 600;
+            color: #94a3b8;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .text-original {
+            color: #cbd5e1;
+        }
+
+        .text-corrected {
+            color: #34d399;
+            font-size: 17px;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .text-translation {
+            color: #f39c12;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 20px;
+        }
+
+        .btn-copy {
+            position: absolute;
+            right: 15px;
+            bottom: 15px;
+            padding: 6px 12px;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-copy:hover {
+            background: #10b981;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>AI Spell & Grammar Checker</h2>
+
+    <form method="POST" id="spellForm">
+        <!-- ইনপুট বক্সে পুরানো লেখা ধরে রাখার জন্য জিনজা কন্ডিশন -->
+        <input type="text" name="text" id="inputText" placeholder="Type your sentence here..." value="{% if original %}{{ original }}{% endif %}" required autocomplete="off">
+        
+        <div class="button-group">
+            <button type="submit">✨ Check AI</button>
+            <a href="/" class="btn-reset">🔄 Reset</a>
+        </div>
+    </form>
+
+    <!-- পাইথন থেকে রেজাল্ট আসলে এই বক্সটি ওপেন হবে -->
+    {% if result %}
+        <div class="result-box">
+            <p>
+                <span class="label">Original:</span>
+                <span class="text-original">{{ original }}</span>
+            </p>
+            <p style="margin-top: 15px;">
+                <span class="label">Corrected:</span>
+                <span class="text-corrected" id="correctedText">{{ result }}</span>
+            </p>
+            <p>
+                <span class="label">Bangla Meaning:</span>
+                <!-- পাইথনের deep-translator থেকে আসা বাংলা এখানে শো করবে -->
+                <span class="text-translation" id="translatedText">{{ translation }}</span>
+            </p>
+            
+            <!-- কপি বাটন -->
+            <button class="btn-copy" onclick="copyText()">📋 Copy</button>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // এক ক্লিকে ইংরেজি এবং বাংলা একসাথে কপি করার জাভাস্ক্রিপ্ট
+    function copyText() {
+        var correctedText = document.getElementById("correctedText").innerText;
+        var translatedText = document.getElementById("translatedText").innerText;
+        var copyBtn = document.querySelector('.btn-copy');
+        
+        // ফরম্যাট অনুযায়ী ডাটা রেডি করা
+        var textToCopy = `English: ${correctedText}\nBangla: ${translatedText}`;
+        
+        // ক্লিপবোর্ডে টেক্সট পাঠানো হচ্ছে
+        navigator.clipboard.writeText(textToCopy).then(function() {
+            // কপি সফল হলে বাটনের টেক্সট পরিবর্তন হবে
+            copyBtn.innerText = "✅ একসাথে কপি হয়েছে!";
+            copyBtn.style.background = "#10b981";
+            
+            // ২.৫ সেকেন্ড পর বাটন আবার আগের মতো হয়ে যাবে
+            setTimeout(function() {
+                copyBtn.innerText = "📋 Copy";
+                copyBtn.style.background = "rgba(255, 255, 255, 0.1)";
+            }, 2500);
+        });
+    }
+</script>
+
+</body>
+</html>
